@@ -1,0 +1,37 @@
+version: "3"
+
+services:
+  traefik:
+    image: traefik:v2.2.5
+    command: --api.insecure=true --providers.docker
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  xdebug:
+    build:
+      context: .
+      dockerfile: ./apache/Dockerfile
+    environment:
+      XDEBUG_CONFIG: remote_host=docker.for.mac.localhost
+    expose:
+      - 80
+    volumes:
+      - ./docker/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+      - ./src:/var/www/html
+      - xdebug-files:/tmp/files/xdebug/profiler
+    labels:
+      - "traefik.http.routers.xdebug.rule=Host(`xdebug.localhost`)"
+
+  webgrind:
+    image: wodby/webgrind:1-1.17.3
+    environment:
+      WEBGRIND_PROFILER_DIR: /tmp/files/xdebug/profiler
+    volumes:
+      - xdebug-files:/tmp/files/xdebug/profiler
+    labels:
+      - "traefik.http.routers.webgrind.rule=Host(`webgrind.localhost`)"
+
+volumes:
+  xdebug-files:
